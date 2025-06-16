@@ -1,10 +1,10 @@
-import type { IDE, IdeInfo, IdeSettings, Problem, FileStatsMap, FileType, Range, RangeInFile, Location, Thread, ToastType, IndexTag, ContinueRcJson, TerminalOptions } from "core";
+import { exec } from "child_process";
+import type { ContinueRcJson, FileStatsMap, FileType, IDE, IdeInfo, IdeSettings, IndexTag, Location, Problem, Range, RangeInFile, Thread } from "core";
+import crypto from "crypto";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
-import { exec } from "child_process";
 import { promisify } from "util";
-import crypto from "crypto";
 
 const execAsync = promisify(exec);
 
@@ -15,10 +15,34 @@ export class LightIde implements IDE {
     this.webviewProtocolPromise = webviewProtocolPromise;
   }
 
+  private resolveProjectPath(filePath: string): string {
+    if (filePath.startsWith("file://")) {
+      try {
+        const url = new URL(filePath);
+        // On Windows, url.pathname may start with a slash, e.g. /C:/...
+        // On Unix, it's just the absolute path.
+        let absPath = url.pathname;
+        // Remove leading slash on Windows
+        if (process.platform === "win32" && absPath.startsWith("/")) {
+          absPath = absPath.slice(1);
+        }
+        return absPath;
+      } catch {
+        // fallback: strip file://
+        filePath = filePath.replace(/^file:\/\//, '');
+      }
+    }
+    // If already absolute, return as is
+    if (path.isAbsolute(filePath)) {
+      return filePath;
+    }
+    // Otherwise, resolve relative to projects
+    return path.join(process.cwd(), "projects", filePath);
+  }
+
   async getIdeInfo(): Promise<IdeInfo> {
-    // console.log("LightIde.getIdeInfo called");
     return {
-      ideType: "vscode", // Or "node" if you prefer
+      ideType: "vscode",
       name: "LightIde",
       version: "1.0.0",
       remoteName: "local",
@@ -38,7 +62,8 @@ export class LightIde implements IDE {
 
   async getDiff(includeUnstaged: boolean): Promise<string[]> {
     try {
-      const { stdout } = await execAsync(`git diff ${includeUnstaged ? "" : "--cached"} --name-only`);
+      const cwd = path.join(process.cwd(), "projects");
+      const { stdout } = await execAsync(`git diff ${includeUnstaged ? "" : "--cached"} --name-only`, { cwd });
       return stdout.trim().split("\n").filter(Boolean);
     } catch {
       return [];
@@ -47,7 +72,7 @@ export class LightIde implements IDE {
 
   async getClipboardContent(): Promise<{ text: string; copiedAt: string }> {
     return {
-      text: "", // Clipboard not implemented
+      text: "",
       copiedAt: new Date().toISOString(),
     };
   }
@@ -85,7 +110,7 @@ export class LightIde implements IDE {
 
   async getWorkspaceConfigs(): Promise<ContinueRcJson[]> {
     try {
-      const configPath = path.join(process.cwd(), ".continuerc.json");
+      const configPath = path.join(process.cwd(), "projects", ".continuerc.json");
       const content = await fs.readFile(configPath, "utf-8");
       return [JSON.parse(content)];
     } catch {
@@ -95,8 +120,8 @@ export class LightIde implements IDE {
 
   async fileExists(filePath: string): Promise<boolean> {
     try {
-      filePath = this.revertFilePath(filePath);
-      await fs.access(filePath);
+      const resolvedPath = this.resolveProjectPath(filePath);
+      await fs.access(resolvedPath);
       return true;
     } catch {
       return false;
@@ -104,13 +129,8 @@ export class LightIde implements IDE {
   }
 
   async writeFile(filePath: string, contents: string): Promise<void> {
-    filePath = this.revertFilePath(filePath);
-    await fs.writeFile(filePath, contents, "utf-8");
-  }
-
-  private revertFilePath(filePath: string) {
-    filePath = filePath.replace(/^file:\/\//, '');
-    return filePath;
+    const resolvedPath = this.resolveProjectPath(filePath);
+    await fs.writeFile(resolvedPath, contents, "utf-8");
   }
 
   async showVirtualFile(title: string, contents: string): Promise<void> {
@@ -118,40 +138,40 @@ export class LightIde implements IDE {
   }
 
   async openFile(filePath: string): Promise<void> {
-    console.log(`Open file: ${filePath}`);
+    const resolvedPath = this.resolveProjectPath(filePath);
+    console.log(`Open file: ${resolvedPath}`);
   }
 
   async openUrl(url: string): Promise<void> {
     const cmd = process.platform === "win32" ? `start "" "${url}"` :
-                process.platform === "darwin" ? `open "${url}"` :
-                `xdg-open "${url}"`;
+      process.platform === "darwin" ? `open "${url}"` :
+        `xdg-open "${url}"`;
     await execAsync(cmd);
   }
 
   async runCommand(command: string): Promise<void> {
     try {
-      await execAsync(command);
-    }
-    catch (error) {
-      console.error(`Error running command "${command}":`, error);
+      const cwd = path.join(process.cwd(), "projects");
+      await execAsync(command, { cwd });
+    } catch (error: any) {
+      console.error(`Error running command "${command}":`, error?.stderr || error);
     }
   }
 
   async saveFile(fileUri: string): Promise<void> {
     try {
-
-      // Write the content back to the file
-      await this.writeFile(fileUri, '');
+      const resolvedPath = this.resolveProjectPath(fileUri);
+      await this.writeFile(resolvedPath, '');
       return;
     } catch (error) {
       console.error(`Error saving file ${fileUri}:`, error);
-      throw error; // Propagate the error to the caller
+      throw error;
     }
   }
 
   async readFile(fileUri: string): Promise<string> {
-    fileUri = this.revertFilePath(fileUri);
-    return await fs.readFile(fileUri, "utf-8");
+    const resolvedPath = this.resolveProjectPath(fileUri);
+    return await fs.readFile(resolvedPath, "utf-8");
   }
 
   async readRangeInFile(fileUri: string, range: Range): Promise<string> {
@@ -187,7 +207,8 @@ export class LightIde implements IDE {
   }
 
   async subprocess(command: string, cwd?: string): Promise<[string, string]> {
-    const { stdout, stderr } = await execAsync(command, { cwd });
+    const resolvedCwd = cwd ? this.resolveProjectPath(cwd) : path.join(process.cwd(), "projects");
+    const { stdout, stderr } = await execAsync(command, { cwd: resolvedCwd });
     return [stdout, stderr];
   }
 
@@ -197,7 +218,8 @@ export class LightIde implements IDE {
 
   async getBranch(dir: string): Promise<string> {
     try {
-      const { stdout } = await execAsync("git rev-parse --abbrev-ref HEAD", { cwd: dir });
+      const resolvedDir = this.resolveProjectPath(dir);
+      const { stdout } = await execAsync("git rev-parse --abbrev-ref HEAD", { cwd: resolvedDir });
       return stdout.trim();
     } catch {
       return "main";
@@ -209,7 +231,8 @@ export class LightIde implements IDE {
   }
 
   async getRepoName(dir: string): Promise<string | undefined> {
-    return path.basename(path.resolve(dir));
+    const resolvedDir = this.resolveProjectPath(dir);
+    return path.basename(path.resolve(resolvedDir));
   }
 
   async showToast(
@@ -221,7 +244,8 @@ export class LightIde implements IDE {
 
   async getGitRootPath(dir: string): Promise<string | undefined> {
     try {
-      const { stdout } = await execAsync("git rev-parse --show-toplevel", { cwd: dir });
+      const resolvedDir = this.resolveProjectPath(dir);
+      const { stdout } = await execAsync("git rev-parse --show-toplevel", { cwd: resolvedDir });
       return stdout.trim();
     } catch {
       return undefined;
@@ -229,8 +253,8 @@ export class LightIde implements IDE {
   }
 
   async listDir(dir: string): Promise<[string, FileType][]> {
-    dir = this.revertFilePath(dir);
-    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const resolvedDir = this.resolveProjectPath(dir);
+    const entries = await fs.readdir(resolvedDir, { withFileTypes: true });
     return entries.map((entry) => [
       entry.name,
       entry.isDirectory() ? 2 : 1,
@@ -241,12 +265,13 @@ export class LightIde implements IDE {
     const stats: FileStatsMap = {};
     for (const file of files) {
       try {
-        const stat = await fs.stat(file);
+        const resolvedFile = this.resolveProjectPath(file);
+        const stat = await fs.stat(resolvedFile);
         stats[file] = {
           size: stat.size,
           lastModified: stat.mtimeMs,
         };
-      } catch {}
+      } catch { }
     }
     return stats;
   }

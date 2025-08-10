@@ -184,7 +184,8 @@ export class AICoreGeneralProvider extends BaseLLM {
             }
         }
 
-
+        // Chat Completion
+        
         // Relevant docs:
         // https://sap.github.io/ai-sdk/docs/js/orchestration/chat-completion#custom-destination
         // https://sap.github.io/cloud-sdk/docs/js/features/connectivity/destinations#register-destination 
@@ -192,7 +193,7 @@ export class AICoreGeneralProvider extends BaseLLM {
             destinationName: 'bas-llm'
         });
 
-        // Chat Completion
+        /**
         let response;
         try {
             response = await orchestrationClient.chatCompletion(aiCorePrompt);
@@ -213,31 +214,36 @@ export class AICoreGeneralProvider extends BaseLLM {
             toolCalls: toolCalls
         };
         yield assistantMessage;
-
-        // Streaming - enable this
-        // try {
-
-        //     let response = await orchestrationClient.stream(aiCorePrompt)
-        //     for await (const chunk of response.stream) {
-        //         const toolsCallsAiCore = chunk.getDeltaToolCalls();
-        //         const toolCalls: ToolCallDelta[] = (!toolsCallsAiCore) ? [] : this.parseDeltaToolResponce(toolsCallsAiCore)
-        //         const content = chunk.getDeltaContent() || ""
-        //         if(!content && toolCalls.length === 0){
-        //         }
-        //         else{
-        //             // Yield the assistant message with tool calls
-        //             const assistantMessage: ChatMessage = {
-        //                 role: "assistant",
-        //                 content: content,
-        //                 toolCalls: toolCalls
-        //             };
-        //             yield assistantMessage;
-        //         }
-        //     }
-        // }
-        // catch (e) {
-        //     throw e;
-        // }
+        */
+       
+        // Streaming
+        try {
+            let response = await orchestrationClient.stream(aiCorePrompt)
+            for await (const chunk of response.stream) {
+                const content = chunk.getDeltaContent();
+                if(content){
+                    const assistantMessage: ChatMessage = {
+                        role: "assistant",
+                        content: content,
+                        toolCalls: []
+                    };
+                    yield assistantMessage;
+                }
+            }
+            const toolsCallsAiCore = response.getToolCalls();
+            if(toolsCallsAiCore && toolsCallsAiCore.length > 0){
+                const toolCalls: ToolCallDelta[] = this.parseToolsResponce(toolsCallsAiCore)
+                const assistantMessage: ChatMessage = {
+                    role: "assistant",
+                    content: "",
+                    toolCalls: toolCalls
+                };
+                yield assistantMessage;
+            }
+        }
+        catch (e) {
+            throw e;
+        }
 
     }
     parseDeltaToolResponce(toolsCallsAiCore: ToolCallChunk[]): ToolCallDelta[] {

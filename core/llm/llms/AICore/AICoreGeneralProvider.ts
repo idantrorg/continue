@@ -5,6 +5,8 @@ import path from "path";
 import { ChatMessage, CompletionOptions, LLMOptions, MessageContent, Tool, ToolCallDelta } from "../../../index.js";
 import { BaseLLM } from "../../index.js";
 import { sanitizeToolName } from "./AICoreUtils.js";
+import { registerDestination } from '@sap-cloud-sdk/connectivity';
+import { devspace } from "@sap/bas-sdk";
 
 const AI_CORE_CREDS_FILENAME = "ai-core-creds.json"
 
@@ -18,10 +20,23 @@ export class AICoreGeneralProvider extends BaseLLM {
             maxTokens: 4096,
         },
     };
+    // Cache to indicate whether destination for LLM proxy has been registered
+    private destinationBASLLMPromise;
 
     constructor(options: LLMOptions) {
         super(options);
-        this.setupAiCore()
+        
+        if (devspace.isBuild() ) {
+            this.destinationBASLLMPromise = registerDestination(
+                { name: 'bas-llm', url: `${process.env["H2O_URL"]}/llm/v2` },
+            );
+        }
+        // Only in Non BAS enviornments it may be possible to search for local json file. Otherwise it uses the BAS LLM Proxy.
+        // Used for local development or testing purposes but do not fail if it doesn't exist.
+        else if (!process.env["H2O_URL"]){
+            this.setupAiCore();
+        }
+
     }
 
     private convertTools(tools?: Tool[]): ChatCompletionTool[] {
@@ -56,9 +71,9 @@ export class AICoreGeneralProvider extends BaseLLM {
         const content = this.convertContentMessage(chatMessage.content)
         switch (chatMessage.role) {
             case "assistant":
-                if(chatMessage.toolCalls){
+                if (chatMessage.toolCalls) {
                     let toolCalls = this.convertToolCalls(chatMessage.toolCalls)
-                    if(toolCalls.length >= 1){
+                    if (toolCalls.length >= 1) {
                         toolCalls = [toolCalls[0]];
                     }
                     return {
@@ -97,20 +112,20 @@ export class AICoreGeneralProvider extends BaseLLM {
 
     }
     convertToolCalls(toolCalls: ToolCallDelta[]): MessageToolCalls {
-       const messageToolCalls = toolCalls.map((toolCallDelta) => {
+        const messageToolCalls = toolCalls.map((toolCallDelta) => {
             const toolFunction = toolCallDelta.function;
-            if(!toolCallDelta.id || !toolFunction || !toolFunction.arguments || !toolFunction.name){
+            if (!toolCallDelta.id || !toolFunction || !toolFunction.arguments || !toolFunction.name) {
                 return undefined
             }
-            const messageToolCall: MessageToolCall =  {
+            const messageToolCall: MessageToolCall = {
                 type: "function",
                 id: toolCallDelta.id,
-                function: {name: toolFunction.name, arguments: toolFunction.arguments}
-                
+                function: { name: toolFunction.name, arguments: toolFunction.arguments }
+
             }
             return messageToolCall
-       }).filter((messageToolCall) => messageToolCall !== undefined)
-       return messageToolCalls
+        }).filter((messageToolCall) => messageToolCall !== undefined)
+        return messageToolCalls
     }
 
     private convertMessages(messages: ChatMessage[]): AICoreChatMessages {
@@ -144,13 +159,16 @@ export class AICoreGeneralProvider extends BaseLLM {
         signal: AbortSignal,
         options: CompletionOptions,
     ): AsyncGenerator<ChatMessage> {
+
+        // Wait until the destination is registered.
+        await this.destinationBASLLMPromise;
         const tools = this.convertTools(options.tools);
         const allAiCoreMessages = this.convertMessages(messages)
         const messagesHistory = allAiCoreMessages.slice(0, -1); // All items except last
         const aiCoreMessages = [allAiCoreMessages[allAiCoreMessages.length - 1]]; // Last item in array
-        
+
         const aiCorePrompt: Prompt = {
-            messages: aiCoreMessages, 
+            messages: aiCoreMessages,
             messagesHistory: messagesHistory
         }
 
@@ -165,10 +183,16 @@ export class AICoreGeneralProvider extends BaseLLM {
                 tools: tools,
             }
         }
-        const orchestrationClient = new OrchestrationClient(config);
 
-        // // Chat Completion
 
+        // Relevant docs:
+        // https://sap.github.io/ai-sdk/docs/js/orchestration/chat-completion#custom-destination
+        // https://sap.github.io/cloud-sdk/docs/js/features/connectivity/destinations#register-destination 
+        const orchestrationClient = new OrchestrationClient(config, undefined, {
+            destinationName: 'bas-llm'
+        });
+
+        // Chat Completion
         let response;
         try {
             response = await orchestrationClient.chatCompletion(aiCorePrompt);
@@ -176,11 +200,11 @@ export class AICoreGeneralProvider extends BaseLLM {
         catch (e) {
             throw e;
         }
-        
-        const toolsCallsAiCore = response.getToolCalls();
-        const toolCalls: ToolCallDelta[] = (!toolsCallsAiCore) ? [] : this.parseToolsResponce(toolsCallsAiCore)
 
-        const content = response.getContent() || ""
+        const toolsCallsAiCore = response.getToolCalls();
+        const toolCalls: ToolCallDelta[] = (!toolsCallsAiCore) ? [] : this.parseToolsResponce(toolsCallsAiCore);
+
+        const content = response.getContent() || "";
 
         // Yield the assistant message with tool calls
         const assistantMessage: ChatMessage = {
@@ -190,9 +214,9 @@ export class AICoreGeneralProvider extends BaseLLM {
         };
         yield assistantMessage;
 
-        // Streaming
+        // Streaming - enable this
         // try {
-            
+
         //     let response = await orchestrationClient.stream(aiCorePrompt)
         //     for await (const chunk of response.stream) {
         //         const toolsCallsAiCore = chunk.getDeltaToolCalls();
@@ -227,12 +251,12 @@ export class AICoreGeneralProvider extends BaseLLM {
                 }
             };
         });
-        if(!tools[0]){
+        if (!tools[0]) {
             return []
         }
         return [tools[0]]
     }
-    
+
     parseToolsResponce(toolsCallsAiCore: MessageToolCalls): ToolCallDelta[] {
         return toolsCallsAiCore.map((tool) => {
             return {
@@ -247,14 +271,14 @@ export class AICoreGeneralProvider extends BaseLLM {
     }
 
     loadAiCoreCredentials(): string | undefined {
-        const credsFilePath = path.join(os.homedir(), AI_CORE_CREDS_FILENAME)
+        const credsFilePath = path.join(os.homedir(), AI_CORE_CREDS_FILENAME);
 
-        if (!fs.existsSync(credsFilePath)) {
-            return undefined
-        }
-
-        const fileContents = fs.readFileSync(credsFilePath, "utf-8")
         try {
+            if (!fs.existsSync(credsFilePath)) {
+                return undefined;
+            }
+
+            const fileContents = fs.readFileSync(credsFilePath, "utf-8");
             const parsed = JSON.parse(fileContents)
 
             // Check and report missing credentials
@@ -280,7 +304,7 @@ export class AICoreGeneralProvider extends BaseLLM {
 
             return JSON.stringify(parsed)
         } catch (e) {
-            throw new Error("Failed to parse ai core credentials file:", e as any)
+            throw new Error("Failed to parse AI Core credentials file:", e as any)
         }
     }
 
@@ -288,11 +312,13 @@ export class AICoreGeneralProvider extends BaseLLM {
         let creds: string | undefined
 
         try {
-            creds = this.loadAiCoreCredentials()
+            creds = this.loadAiCoreCredentials();
+            process.env["AICORE_SERVICE_KEY"] = creds;
         } catch (err) {
-            throw new Error(`Failed to load AI Core credentials: ${err}`)
+            // Only log the error and proceed without setting the environment variable
+            console.error(`Failed to load AI Core credentials: ${err}`);
         }
-        process.env["AICORE_SERVICE_KEY"] = creds
+
     }
 
 }

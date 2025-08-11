@@ -75,8 +75,7 @@ export class AICore extends BaseLLM {
         switch (chatMessage.role) {
             case "assistant":
                 if (chatMessage.toolCalls) {
-                    let toolCalls = this.convertToolCalls(chatMessage.toolCalls)
-                    toolCalls = toolCalls;
+                    const toolCalls = this.convertToolCalls(chatMessage.toolCalls)
                     return {
                         role: chatMessage.role,
                         content: "",

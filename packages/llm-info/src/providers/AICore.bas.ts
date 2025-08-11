@@ -1,6 +1,6 @@
 import { ModelProvider } from "../types.js";
 
-export const Anthropic: ModelProvider = {
+export const AICore: ModelProvider = {
     id: "aiCore",
     displayName: "SAP AI Core",
     models: [

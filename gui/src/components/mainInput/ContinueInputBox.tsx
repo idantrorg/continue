@@ -2,7 +2,7 @@ import { Editor, JSONContent } from "@tiptap/react";
 import { ContextItemWithId, InputModifiers, RuleWithSource } from "core";
 import { useMemo } from "react";
 import styled, { keyframes } from "styled-components";
-import { defaultBorderRadius, vscBackground } from "..";
+import { defaultBorderRadius, vscBackground, ChatBubbleContainer, UserMessageBubble } from "..";
 import { useAppSelector } from "../../redux/hooks";
 import { selectSlashCommandComboBoxInputs } from "../../redux/selectors";
 import { ContextItemsPeek } from "./belowMainInput/ContextItemsPeek";
@@ -118,6 +118,45 @@ function ContinueInputBox(props: ContinueInputBoxProps) {
     : {};
 
   const { appliedRules = [], contextItems = [] } = props;
+
+  //BAS Customization - Wrap historical user messages in chat bubbles
+  if (!props.isMainInput) {
+    return (
+      <div
+        className={`${props.hidden ? "hidden" : ""}`}
+        data-testid="continue-input-box"
+      >
+        <ChatBubbleContainer isUser={true}>
+          <UserMessageBubble>
+            <div className={`relative flex flex-col`}>
+              <TipTapEditor
+                editorState={props.editorState}
+                onEnter={props.onEnter}
+                placeholder={placeholder}
+                isMainInput={props.isMainInput ?? false}
+                availableContextProviders={filteredContextProviders}
+                availableSlashCommands={filteredSlashCommands}
+                historyKey={historyKey}
+                toolbarOptions={toolbarOptions}
+                inputId={props.inputId}
+                isInChatBubble={true}
+              />
+            </div>
+            {(appliedRules.length > 0 || contextItems.length > 0) && (
+              <div className="mt-2 flex flex-col">
+                <RulesPeek appliedRules={props.appliedRules} />
+                <ContextItemsPeek
+                  contextItems={props.contextItems}
+                  isCurrentContextPeek={props.isLastUserInput}
+                />
+              </div>
+            )}
+          </UserMessageBubble>
+        </ChatBubbleContainer>
+      </div>
+    );
+  }
+  //BAS Customization End
 
   return (
     <div

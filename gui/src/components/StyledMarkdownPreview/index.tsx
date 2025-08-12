@@ -115,6 +115,8 @@ const StyledMarkdown = styled.div<{
 
   > *:last-child {
     margin-bottom: 0;
+    // BAS Customization - Remove top margin for last child
+    margin-top: 0;
   }
 `;
 
@@ -357,7 +359,8 @@ const StyledMarkdownPreview = memo(function StyledMarkdownPreview(
       contentEditable="false"
       fontSize={getFontSize()}
       whiteSpace={codeWrapState}
-      bgColor={props.useParentBackgroundColor ? "" : vscBackground}
+      // BAS Customization - Use parent background color if specified
+      bgColor=""
     >
       {reactContent}
     </StyledMarkdown>

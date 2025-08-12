@@ -12,7 +12,7 @@ const AI_CORE_CREDS_FILENAME = "ai-core-creds.json";
 
 export class AICore extends BaseLLM {
     static providerName = "aiCore";
-    private llmOptions: LLMOptions;
+    
     static defaultOptions: Partial<LLMOptions> = {
         model: "anthropic--claude-3.7-sonnet",
         contextLength: 200_000,
@@ -26,7 +26,6 @@ export class AICore extends BaseLLM {
 
     constructor(options: LLMOptions) {
         super(options);
-        this.llmOptions = options;
 
         if (devspace.isBuild()) {
             this.destinationBASLLMPromise = registerDestination(
@@ -76,10 +75,7 @@ export class AICore extends BaseLLM {
         switch (chatMessage.role) {
             case "assistant":
                 if (chatMessage.toolCalls) {
-                    let toolCalls = this.convertToolCalls(chatMessage.toolCalls)
-                    if (toolCalls.length >= 1) {
-                        toolCalls = [toolCalls[0]];
-                    }
+                    const toolCalls = this.convertToolCalls(chatMessage.toolCalls)
                     return {
                         role: chatMessage.role,
                         content: "",

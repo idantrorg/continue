@@ -232,7 +232,8 @@ export function TipTapEditor(props: TipTapEditorProps) {
         event.preventDefault();
       }}
     >
-      <div className="px-2.5 pb-1 pt-2">
+      {/* BAS Customization - Adjust padding left-right for user message box*/}
+      <div className="px-4 pb-1 pt-2"> 
         <EditorContent
           className={`scroll-container overflow-y-scroll ${props.isMainInput ? "max-h-[70vh]" : ""}`}
           spellCheck={false}

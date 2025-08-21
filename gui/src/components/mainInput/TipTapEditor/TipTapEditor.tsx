@@ -33,6 +33,10 @@ export interface TipTapEditorProps {
   // TODO: This isn't actually used anywhere in this component, but it appears
   // to be pulled into some of our TipTap extensions.
   inputId: string;
+  
+  //BAS Customization - Add prop to indicate if editor is in chat bubble
+  isInChatBubble?: boolean;
+  //BAS Customization End
 }
 
 export const TIPPY_DIV_ID = "tippy-js-div";
@@ -174,6 +178,7 @@ export function TipTapEditor(props: TipTapEditorProps) {
 
   return (
     <InputBoxDiv
+      isInChatBubble={props.isInChatBubble}
       onFocus={handleFocus}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
@@ -227,7 +232,8 @@ export function TipTapEditor(props: TipTapEditorProps) {
         event.preventDefault();
       }}
     >
-      <div className="px-2.5 pb-1 pt-2">
+      {/* BAS Customization - Adjust padding left-right for user message box*/}
+      <div className="px-4 pb-1 pt-2"> 
         <EditorContent
           className={`scroll-container overflow-y-scroll ${props.isMainInput ? "max-h-[70vh]" : ""}`}
           spellCheck={false}

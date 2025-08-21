@@ -11,6 +11,7 @@ import {
   vscBackground,
   vscEditorBackground,
   vscForeground,
+  assistantMessageTextColor, // BAS Customization: Import assistant message text color
 } from "..";
 import useUpdatingRef from "../../hooks/useUpdatingRef";
 import { useAppSelector } from "../../redux/hooks";
@@ -34,6 +35,7 @@ const StyledMarkdown = styled.div<{
   fontSize?: number;
   whiteSpace: string;
   bgColor: string;
+  isAssistantMessage?: boolean; // BAS Customization: Add prop for conditional styles
 }>`
   h1 {
     font-size: 1.25em;
@@ -104,7 +106,7 @@ const StyledMarkdown = styled.div<{
   font-size: ${(props) => props.fontSize || getFontSize()}px;
   padding-left: 8px;
   padding-right: 8px;
-  color: ${vscForeground};
+  color: ${(props) => props.isAssistantMessage ? assistantMessageTextColor : vscForeground}; // BAS Customization: Use assistantMessageTextColor for assistant messages
 
   p,
   li,
@@ -114,7 +116,8 @@ const StyledMarkdown = styled.div<{
   }
 
   > *:last-child {
-    margin-bottom: 0;
+  // BAS Customization - Remove bottom margin for last child  
+  // margin-bottom: 0;
   }
 `;
 
@@ -128,6 +131,7 @@ interface StyledMarkdownPreviewProps {
   disableManualApply?: boolean;
   forceStreamId?: string;
   expandCodeblocks?: boolean;
+  isAssistantMessage?: boolean; // BAS Customization: Set specific styles for assistant messages
 }
 
 const HLJS_LANGUAGE_CLASSNAME_PREFIX = "language-";
@@ -357,7 +361,9 @@ const StyledMarkdownPreview = memo(function StyledMarkdownPreview(
       contentEditable="false"
       fontSize={getFontSize()}
       whiteSpace={codeWrapState}
-      bgColor={props.useParentBackgroundColor ? "" : vscBackground}
+      // BAS Customization - Use parent background color if specified
+      bgColor=""
+      isAssistantMessage={props.isAssistantMessage} // BAS Customization: Pass prop for conditional text color
     >
       {reactContent}
     </StyledMarkdown>

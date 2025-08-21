@@ -66,7 +66,18 @@ function getStatusIcon(state: ToolStatus) {
   }
 }
 
+//BAS Customization: Hide tool calling UI when BAS mode is enabled
+const IS_BAS = true;
+// END BAS Customization
+
 export function ToolCallDiv(props: ToolCallDivProps) {
+  
+  //BAS Customization: Hide tool calling UI when BAS mode is enabled
+  if (IS_BAS) {
+    return null;
+  }
+  //BAS Customization: Hide tool calling UI when BAS mode is enabled
+
   const availableTools = useAppSelector((state) => state.config.config.tools);
   const tool = useMemo(() => {
     return availableTools.find(

@@ -11,7 +11,11 @@ export const IsApplyingToolbar = () => {
 
   return (
     <Container>
-      <GeneratingIndicator text="Applying" />
+      {/* BAS Customization: Hide GeneratingIndicator component */}
+      {/* <GeneratingIndicator text="Applying" /> */}
+      {/* BAS Customization End */}
+      {/* BAS Customization: Show animated dots for "thinking" message */}
+      {/* This is handled in ThinkingBlockPeek, so we don't need to show it here */}
       <StopButton
         className="text-description"
         onClick={() => {

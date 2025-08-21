@@ -5,6 +5,13 @@ export const defaultBorderRadius = "5px";
 export const lightGray = "#999998";
 export const greenButtonColor = "#189e72";
 
+/* BAS Customization - WhatsApp-style chat bubble colors */
+export const userMessageBubbleColor = "#E5D8FA"; // Light purple for user messages
+export const assistantMessageBubbleColor = "#F3F4F6"; // Light gray for assistant messages
+export const userMessageTextColor = "#1D2D3E "; 
+export const assistantMessageTextColor = "#1D2D3E "; 
+/* BAS Customization End */
+
 export const vscInputBackground = varWithFallback("input-background");
 export const vscQuickInputBackground = varWithFallback("input-background");
 export const vscBackground = varWithFallback("background");
@@ -232,3 +239,61 @@ export const AnimatedEllipsis = styled.span`
     }
   }
 `;
+
+//BAS Customization - Chat bubble components
+/* BAS Customization - Increase vertical gap between bubbles */
+export const ChatBubbleContainer = styled.div<{ isUser: boolean }>`
+  display: flex;
+  width: 100%;
+  margin: 0 0 20px 0;
+  justify-content: ${({ isUser }) => (isUser ? "flex-end" : "flex-start")};
+`;
+
+export const ChatBubble = styled.div<{ isUser: boolean }>`
+  max-width: 70%;
+  min-width: 60px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background-color: ${({ isUser }) =>
+    isUser ? userMessageBubbleColor : assistantMessageBubbleColor};
+  color: ${({ isUser }) =>
+    isUser ? userMessageTextColor : assistantMessageTextColor};
+  word-wrap: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+
+  ${({ isUser }) =>
+    isUser
+      ? `
+    border-bottom-right-radius: 6px;
+    margin-right: 12px;
+    align-self: flex-end;
+  `
+      : `
+    border-bottom-left-radius: 6px;
+    margin-left: 12px;
+    align-self: flex-start;
+  `}
+`;
+
+/* BAS Customization: User bubble 8px radius except right bottom */
+export const UserMessageBubble = styled(ChatBubble).attrs({ isUser: true })`
+  display: inline-block;
+  text-align: left;
+  padding: 0px;
+  border-radius: 8px 8px 0px 8px;
+  min-width: unset;
+  max-width: 80%;
+  line-height: 1.4;
+`;
+
+/* BAS Customization: Assistant bubble 8px radius except left bottom 0px */
+export const AssistantMessageBubble = styled(ChatBubble).attrs({ isUser: false })`
+  display: inline-block;
+  text-align: left;
+  padding-left: 10px;
+  padding-right:10px;
+  padding-top: 0px;
+  padding-bottom: 0px;
+  border-radius: 8px 8px 8px 0px;
+`;
+/* BAS Customization End */

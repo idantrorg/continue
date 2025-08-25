@@ -3,7 +3,7 @@ import { renderChatMessage, stripImages } from "core/util/messageContent";
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import styled from "styled-components";
-import { vscBackground } from "..";
+import { vscBackground, ChatBubbleContainer, AssistantMessageBubble } from "..";
 import { useAppSelector } from "../../redux/hooks";
 import { selectUIConfig } from "../../redux/slices/configSlice";
 import { deleteMessage } from "../../redux/slices/sessionSlice";
@@ -19,15 +19,17 @@ interface StepContainerProps {
   isLast: boolean;
 }
 
+//BAS Customization - Remove background color since chat bubble handles it
 const ContentDiv = styled.div<{ fontSize?: number }>`
   padding: 4px;
   padding-left: 6px;
   padding-right: 6px;
 
-  background-color: ${vscBackground};
+  background-color: transparent;
   font-size: ${getFontSize()}px;
   overflow: hidden;
 `;
+//BAS Customization End
 
 export default function StepContainer(props: StepContainerProps) {
   const dispatch = useDispatch();
@@ -79,43 +81,50 @@ export default function StepContainer(props: StepContainerProps) {
     );
   }
 
+  //BAS Customization - WhatsApp-style: Only message content in gray bubble, actions outside
   return (
-    <div>
-      <ContentDiv>
-        {uiConfig?.displayRawMarkdown ? (
-          <pre
-            className="max-w-full overflow-x-auto whitespace-pre-wrap break-words p-4"
-            style={{ fontSize: getFontSize() - 2 }}
-          >
-            {renderChatMessage(props.item.message)}
-          </pre>
-        ) : (
-          <>
-            <Reasoning {...props} />
+    <ChatBubbleContainer isUser={false}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", width: "100%" }}>
+        <AssistantMessageBubble>
+          <ContentDiv>
+            {uiConfig?.displayRawMarkdown ? (
+              <pre
+                className="max-w-full overflow-x-auto whitespace-pre-wrap break-words p-4"
+                style={{ fontSize: getFontSize() - 2 }}
+              >
+                {renderChatMessage(props.item.message)}
+              </pre>
+            ) : (
+              <>
+                <Reasoning {...props} />
 
-            <StyledMarkdownPreview
-              isRenderingInStepContainer
-              source={stripImages(props.item.message.content)}
-              itemIndex={props.index}
-            />
-          </>
+                <StyledMarkdownPreview
+                  isRenderingInStepContainer
+                  source={stripImages(props.item.message.content)}
+                  itemIndex={props.index}
+                  isAssistantMessage={true} // BAS Customization: Enable assistant messages styles
+                />
+              </>
+            )}
+            {props.isLast && <ThinkingIndicator historyItem={props.item} />}
+          </ContentDiv>
+        </AssistantMessageBubble>
+        {/* We want to occupy space in the DOM regardless of whether the actions are visible to avoid jank on stream complete */}
+        {!hideActionSpace && (
+          <div className={`mt-2 h-7 transition-opacity duration-300 ease-in-out`}>
+            {!hideActions && (
+              <ResponseActions
+                isTruncated={isTruncated}
+                onDelete={onDelete}
+                onContinueGeneration={onContinueGeneration}
+                index={props.index}
+                item={props.item}
+              />
+            )}
+          </div>
         )}
-        {props.isLast && <ThinkingIndicator historyItem={props.item} />}
-      </ContentDiv>
-      {/* We want to occupy space in the DOM regardless of whether the actions are visible to avoid jank on stream complete */}
-      {!hideActionSpace && (
-        <div className={`mt-2 h-7 transition-opacity duration-300 ease-in-out`}>
-          {!hideActions && (
-            <ResponseActions
-              isTruncated={isTruncated}
-              onDelete={onDelete}
-              onContinueGeneration={onContinueGeneration}
-              index={props.index}
-              item={props.item}
-            />
-          )}
-        </div>
-      )}
-    </div>
+      </div>
+    </ChatBubbleContainer>
   );
+  //BAS Customization End
 }

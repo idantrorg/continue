@@ -135,18 +135,8 @@ function InputToolbar(props: InputToolbarProps) {
                   </HoverItem>
                 </>
               ))}
-            {props.toolbarOptions?.hideAddContext || (
-              <HoverItem onClick={props.onAddContextItem}>
-                <AtSymbolIcon
-                  data-tooltip-id="add-context-item-tooltip"
-                  className="h-3 w-3 hover:brightness-125"
-                />
-
-                <ToolTip id="add-context-item-tooltip" place="top">
-                  Attach Context
-                </ToolTip>
-              </HoverItem>
-            )}
+            {/* BAS Customization: Hide the "@" context button */}
+            {/* BAS Customization End */}
           </div>
         </div>
 
@@ -156,35 +146,8 @@ function InputToolbar(props: InputToolbarProps) {
             fontSize: tinyFont,
           }}
         >
-          {!props.toolbarOptions?.hideUseCodebase && !isInEdit && (
-            <div
-              className={`${toolsSupported ? "md:flex" : "int:flex"} hover:underline" hidden transition-colors duration-200`}
-            >
-              {props.activeKey === "Alt" ? (
-                <HoverItem className="underline">
-                  {`${getAltKeyLabel()}⏎
-                  ${useActiveFile ? "No active file" : "Active file"}`}
-                </HoverItem>
-              ) : (
-                <HoverItem
-                  className={props.activeKey === "Meta" ? "underline" : ""}
-                  onClick={(e) =>
-                    props.onEnter?.({
-                      useCodebase: true,
-                      noContext: !useActiveFile,
-                    })
-                  }
-                >
-                  <span data-tooltip-id="add-codebase-context-tooltip">
-                    {getMetaKeyLabel()}⏎ @codebase
-                  </span>
-                  <ToolTip id="add-codebase-context-tooltip" place="top-end">
-                    Send With Codebase as Context ({getMetaKeyLabel()}⏎)
-                  </ToolTip>
-                </HoverItem>
-              )}
-            </div>
-          )}
+          {/* BAS Customization: Hide the codebase context button */}
+          {/* BAS Customization End */}
 
           {isInEdit && (
             <HoverItem

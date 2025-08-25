@@ -145,6 +145,7 @@ export const sessionSlice = createSlice({
         state.history[index].contextItems = contextItems;
       }
     },
+    // BAS Customization: Insert a "thinking" message instead of an empty assistant message
     submitEditorAndInitAtIndex: (
       state,
       {
@@ -172,8 +173,8 @@ export const sessionSlice = createSlice({
         state.history = state.history.slice(0, index + 1).concat({
           message: {
             id: uuidv4(),
-            role: "assistant",
-            content: "", // IMPORTANT - this is subsequently updated by response streaming
+            role: "thinking",
+            content: "", // This will trigger the thinking dots in the chat
           },
           contextItems: [],
         });
@@ -192,8 +193,8 @@ export const sessionSlice = createSlice({
           {
             message: {
               id: uuidv4(),
-              role: "assistant",
-              content: "", // IMPORTANT - this is subsequently updated by response streaming
+              role: "thinking",
+              content: "", // This will trigger the thinking dots in the chat
             },
             contextItems: [],
           },
@@ -202,6 +203,7 @@ export const sessionSlice = createSlice({
 
       state.isStreaming = true;
     },
+    // BAS Customization End
     deleteMessage: (state, action: PayloadAction<number>) => {
       // Deletes the current assistant message and the previous user message
       state.history.splice(action.payload - 1, 2);

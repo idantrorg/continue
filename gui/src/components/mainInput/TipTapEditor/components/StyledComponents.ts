@@ -8,10 +8,12 @@ import {
   vscForeground,
   vscInputBackground,
   vscInputBorderFocus,
+  userMessageTextColor,
 } from "../../..";
 import { getFontSize } from "../../../../util";
 
-export const InputBoxDiv = styled.div<{}>`
+//BAS Customization - Updated InputBoxDiv to support chat bubbles
+export const InputBoxDiv = styled.div<{ isInChatBubble?: boolean }>`
   resize: none;
   font-family: inherit;
   border-radius: ${defaultBorderRadius};
@@ -19,13 +21,17 @@ export const InputBoxDiv = styled.div<{}>`
   margin: 0;
   height: auto;
   width: 100%;
-  background-color: ${vscInputBackground};
-  color: ${vscForeground};
+  background-color: ${({ isInChatBubble }) => 
+    isInChatBubble ? 'transparent' : vscInputBackground};
+  color: ${({ isInChatBubble }) => 
+    isInChatBubble ? userMessageTextColor : vscForeground};
 
-  border: 1px solid ${vscCommandCenterInactiveBorder};
+  border: ${({ isInChatBubble }) => 
+    isInChatBubble ? 'none' : `1px solid ${vscCommandCenterInactiveBorder}`};
   transition: border-color 0.15s ease-in-out;
   &:focus-within {
-    border: 1px solid ${vscCommandCenterActiveBorder};
+    border: ${({ isInChatBubble }) => 
+      isInChatBubble ? 'none' : `1px solid ${vscCommandCenterActiveBorder}`};
   }
 
   outline: none;
@@ -33,8 +39,8 @@ export const InputBoxDiv = styled.div<{}>`
 
   &:focus {
     outline: none;
-
-    border: 0.5px solid ${vscInputBorderFocus};
+    border: ${({ isInChatBubble }) => 
+      isInChatBubble ? 'none' : `0.5px solid ${vscInputBorderFocus}`};
   }
 
   &::placeholder {
@@ -44,6 +50,7 @@ export const InputBoxDiv = styled.div<{}>`
   display: flex;
   flex-direction: column;
 `;
+//BAS Customization End
 
 export const HoverDiv = styled.div`
   position: absolute;
